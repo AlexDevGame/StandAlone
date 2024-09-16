@@ -1,117 +1,127 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  TextInput,
+  Button,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const App = () => {
+  const [task, setTask] = useState('');
+  const [taskList, setTaskList] = useState<string[]>([]);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const loadTasks = async () => {
+    try {
+      const storedTasks = await AsyncStorage.getItem('tasks');
+      if (storedTasks !== null) {
+        setTaskList(JSON.parse(storedTasks));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
+  const addTask = async () => {
+    if (task.trim() === '') {
+      Alert.alert('Erro', 'Por favor, digite uma tarefa válida.');
+      return;
+    }
+    try {
+      const newTaskList = [...taskList, task];
+      setTaskList(newTaskList);
+      await AsyncStorage.setItem('tasks', JSON.stringify(newTaskList));
+      setTask('');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteTask = async (index: number) => {
+    try {
+      const newTaskList = taskList.filter((_, i) => i !== index);
+      setTaskList(newTaskList);
+      await AsyncStorage.setItem('tasks', JSON.stringify(newTaskList));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <View style={styles.container}>
+      <Text style={styles.title}>Lista de Tarefas</Text>
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Digite a tarefa"
+        value={task}
+        onChangeText={setTask}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      
+      <Button title="Adicionar Tarefa" onPress={addTask} />
+
+      <FlatList
+        data={taskList}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={({ item, index }) => (
+          <View style={styles.taskItem}>
+            <Text style={styles.taskText}>{item}</Text>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => deleteTask(index)}
+            >
+              <Text style={styles.deleteText}>Excluir</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
   },
-  sectionTitle: {
+  title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  sectionDescription: {
-    marginTop: 8,
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  taskText: {
     fontSize: 18,
-    fontWeight: '400',
   },
-  highlight: {
-    fontWeight: '700',
+  deleteButton: {
+    backgroundColor: '#ff4444',
+    padding: 5,
+    borderRadius: 5,
+  },
+  deleteText: {
+    color: '#fff',
   },
 });
 
